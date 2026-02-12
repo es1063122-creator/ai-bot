@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=5, user-scalable=yes"/>
+
+<title>동진 Safety AI</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;800&display=swap" rel="stylesheet">
+
+<style>
+
+:root{
+  --dj:#004080;
+  --dj2:#2a6cf6;
+  --bg:#f4f7ff;
+  --line:#d0d7e6;
+  --muted:#667085;
+}
+
+body{
+  margin:0;
+  font-family:"Noto Sans KR",sans-serif;
+  background:var(--bg);
+  height:100vh;
+  display:flex;
+  flex-direction:column;
+  font-size:20px;
+}
+
+/* ===== 상단 ===== */
+.topbar{
+  background:linear-gradient(135deg,var(--dj),var(--dj2));
+  color:#fff;
+  padding:22px;
+  font-weight:800;
+  font-size:24px;
+  display:flex;
+  justify-content:space-between;
+}
+
+.badge{
+  font-size:14px;
+  background:rgba(255,255,255,.18);
+  padding:8px 12px;
+  border-radius:999px;
+}
+
+/* ===== 채팅 ===== */
+.chat{
+  flex:1;
+  overflow-y:auto;
+  padding:20px;
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+}
+
+.bubble{
+  max-width:100%;
+  padding:24px;
+  border-radius:24px;
+  line-height:1.9;
+  word-break:break-word;
+  font-size:22px;
+  box-shadow:0 6px 18px rgba(0,0,0,.06);
+}
+
+.me{
+  align-self:flex-end;
+  background:var(--dj);
+  color:#fff;
+}
+
+.ai{
+  align-self:flex-start;
+  background:#fff;
+}
+
+/* ===== 입력 ===== */
+.composer{
+  border-top:1px solid var(--line);
+  padding:18px;
+  background:#fff;
+}
+
+.row{
+  display:flex;
+  gap:12px;
+}
+
+textarea{
+  flex:1;
+  min-height:80px;
+  padding:20px;
+  border-radius:18px;
+  border:1px solid var(--line);
+  font-size:22px;
+}
+
+.send{
+  background:var(--dj);
+  color:#fff;
+  border:0;
+  border-radius:18px;
+  padding:20px 28px;
+  font-size:22px;
+  font-weight:800;
+  cursor:pointer;
+}
+
+.controls{
+  margin-top:12px;
+  font-size:18px;
+}
+
+/* ===== 모바일 초대형 ===== */
+@media (max-width:600px){
+
+  body{font-size:32px;}
+
+  .topbar{
+    font-size:38px;
+    padding:32px;
+  }
+
+  .bubble{
+    font-size:34px;
+    padding:34px;
+    line-height:2.2;
+  }
+
+  textarea{
+    font-size:34px;
+    min-height:150px;
+  }
+
+  .send{
+    font-size:34px;
+    padding:32px;
+  }
+
+  .controls{
+    font-size:28px;
+  }
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="topbar">
+  <div>동진 본사 Safety AI</div>
+  <div class="badge" id="sessionBadge"></div>
+</div>
+
+<div class="chat" id="chat"></div>
+
+<div class="composer">
+  <div class="row">
+    <textarea id="q" placeholder="질문 입력 (Enter=전송)"></textarea>
+    <button class="send" onclick="send()">전송</button>
+  </div>
+
+  <div class="controls">
+    <label><input type="radio" name="mode" value="fast" checked> 빠른</label>
+    <label><input type="radio" name="mode" value="expert"> 전문가</label>
+  </div>
+</div>
+
+<script>
+
+/* ==============================
+   설정
+============================== */
+
+// 🔥 여기만 바꾸세요
+const API_URL = "https://script.google.com/macros/s/AKfycbw-iZqElAZ3e8IJ_5cYqREB_m3pM0mr1vrzmj6PVh5PlGQDQdxdGXycyEHBjCsr6UY/exec"; 
+const TOKEN = "DJ2026SAFE";
+
+/* ==============================
+   세션
+============================== */
+
+const SESSION_KEY="DJ_SAFETY_AI_SESSION";
+let sessionId=localStorage.getItem(SESSION_KEY);
+
+if(!sessionId){
+  sessionId="sess-"+Date.now();
+  localStorage.setItem(SESSION_KEY,sessionId);
+}
+
+document.getElementById("sessionBadge").innerText=sessionId;
+
+const chatEl=document.getElementById("chat");
+const qEl=document.getElementById("q");
+
+/* ==============================
+   UI
+============================== */
+
+function mode(){
+  return document.querySelector('input[name="mode"]:checked').value;
+}
+
+function addBubble(text,who){
+  const div=document.createElement("div");
+  div.className="bubble "+(who==="me"?"me":"ai");
+  div.innerText=text;
+  chatEl.appendChild(div);
+  chatEl.scrollTop=chatEl.scrollHeight;
+  return div;
+}
+
+function addAI(answer){
+  const div=document.createElement("div");
+  div.className="bubble ai";
+  div.innerText=answer;
+  chatEl.appendChild(div);
+}
+
+/* ==============================
+   질문 전송
+============================== */
+
+async function send(){
+
+  const q=qEl.value.trim();
+  if(!q) return;
+
+  addBubble(q,"me");
+  qEl.value="";
+
+  const loading=addBubble("답변 생성 중...","ai");
+
+  try{
+
+    const res=await fetch(API_URL,{
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body:JSON.stringify({
+        token:TOKEN,
+        sessionId:sessionId,
+        question:q,
+        mode:mode()
+      })
+    });
+
+    const data=await res.json();
+    chatEl.removeChild(loading);
+
+    if(data.ok){
+      addAI(data.answer);
+    }else{
+      addAI("오류: "+data.error);
+    }
+
+  }catch(e){
+    chatEl.removeChild(loading);
+    addAI("서버 연결 실패");
+  }
+}
+
+/* Enter 전송 */
+qEl.addEventListener("keydown",e=>{
+  if(e.key==="Enter" && !e.shiftKey){
+    e.preventDefault();
+    send();
+  }
+});
+
+</script>
+
+</body>
+</html>
