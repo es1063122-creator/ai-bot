@@ -537,21 +537,15 @@ const input    = document.getElementById('chatInput');
 const sendBtn  = document.getElementById('sendBtn');
 
 let isTyping = false;
-let conversationHistory = []; // {role:'user'|'assistant', content:'...'}
+let conversationHistory = [];
 
-/* 닫기 버튼(단독창이므로: 숨김 처리) */
-document.getElementById('chatClose').addEventListener('click', () => {
-  document.getElementById('chatPanel').style.display = 'none';
-});
-
-/* 엔터 전송 */
-input.addEventListener('keydown', e => {
-  if(e.key === 'Enter' && !e.shiftKey){
+// 🔥 Enter = 전송 / Shift+Enter = 줄바꿈
+input.addEventListener("keydown", function (e) {
+  if (e.key === "Enter" && !e.shiftKey) {
     e.preventDefault();
     sendMessage();
   }
 });
-
 /* 자동 높이 */
 input.addEventListener('input', () => {
   input.style.height = 'auto';
